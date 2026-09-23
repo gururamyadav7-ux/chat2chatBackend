@@ -43,11 +43,23 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 //CORS
+const allowedOrigins = [
+  process.env.CLIENT_LOCAL_URL,
+  process.env.CLIENT_URL,
+  
+];
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
-  }),
+  })
 );
 
 // ======================================
