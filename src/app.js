@@ -46,7 +46,7 @@ app.use(cookieParser());
 const allowedOrigins = [
   process.env.CLIENT_LOCAL_URL,
   process.env.CLIENT_URL,
-  
+
 ];
 
 app.use(
@@ -69,13 +69,19 @@ const server = http.createServer(app);
 // ==========================================
 // SOCKET
 // ==========================================
-const io = new Server(server, {
-  cors: {
-    origin: "http://localhost:5173",
+const io = new Server(server,
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: ["GET", "POST"],
     credentials: true,
-  },
-});
+  })
+);
 
 initSocket(io)
 // chat socket
