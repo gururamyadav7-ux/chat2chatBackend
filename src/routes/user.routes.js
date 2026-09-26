@@ -2,6 +2,7 @@ const express = require("express");
 const { authMiddleware } = require("../middleware/middleware");
 const {
   registerUser,
+  verifyRegisterOtp,
   loginUser,
   getMyProfile,
   getAllUsers,
@@ -26,5 +27,10 @@ router.get("/searchusers", authMiddleware, searchUsers);
 router.put("/updateprofile", authMiddleware, updateProfile);
 // logout user
 router.get("/logoutuser", authMiddleware, logoutUser);
+
+// OTP verify 
+
+router.post("/verify-register-otp", verifyRegisterOtp);
+
 
 module.exports = router;

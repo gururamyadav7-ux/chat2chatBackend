@@ -11,9 +11,6 @@ const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
 
-
-
-
     const { name, about } = req.body;
 
     const user = await User.findById(userId);

@@ -60,11 +60,14 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-
+    
+    // OTP verifid
     isVerified: {
       type: Boolean,
       default: false,
     },
+
+    
     // socketId for real-time communication
     socketId: {
       type: String,
@@ -77,6 +80,12 @@ const userSchema = new mongoose.Schema(
     },
   },
   { timestamps: true },
+);
+
+// Automatically delete OTP after expiresAt
+userSchema.index(
+  { expiresAt: 1 },
+  { expireAfterSeconds: 0 }
 );
 
 // Hash password before saving

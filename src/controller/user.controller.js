@@ -2,6 +2,12 @@ const User = require("../model/User.model");
 const bcrypt = require("bcryptjs");
 const { generateAccessToken, generateRefreshToken } = require("../utils/TokenCreate")
 
+const Otp = require("../model/OTP.model");
+
+const sendOtpEmail = require("../utils/SendOTP");
+
+
+
 // ===============================
 // Register User
 // ===============================
@@ -37,16 +43,102 @@ const registerUser = async (req, res) => {
       });
     }
 
+    // Generate 6 digit OTP
+    const otp = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+
     // Password hash
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Delete previous OTP
+    await Otp.deleteMany({ email });
+
+    // OTP expires after 5 minutes
+    const expiresAt = new Date(
+      Date.now() + 5 * 60 * 1000
+    );
+
+    await Otp.create({
+      email,
+      otp,
+      name,
+      phone,
+      password: hashedPassword,
+      expiresAt,
+    });
+
+    await sendOtpEmail(email, otp);
+
+    res.status(200).json({
+      success: true,
+      message: "OTP sent successfully",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// Verification
+
+const verifyRegisterOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "email and OTP are required",
+      });
+    }
+
+    const otpData = await Otp.findOne({ email });
+
+
+
+    if (!otpData) {
+      return res.status(400).json({
+        success: false,
+        message: "email and OTP expired or not found",
+      });
+    }
+
+    if (otpData.otp !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    if (otpData.expiresAt < new Date()) {
+      await Otp.deleteOne({ _id: otpData._id });
+
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired",
+      });
+    }
 
 
     // Create user
     const user = await User.create({
-      name,
-      email,
-      phone,
-      password: hashedPassword,
+      name: otpData.name,
+      email: otpData.email,
+      phone: otpData.phone,
+      password: otpData.password,
+      isVerified: true,
+    });
+
+
+    // Delete OTP
+    await Otp.deleteOne({
+      _id: otpData._id,
     });
 
     // Generate Access Token
@@ -104,12 +196,11 @@ const registerUser = async (req, res) => {
       });
 
   } catch (error) {
-    console.error(error);
+    console.log(error);
 
     res.status(500).json({
       success: false,
-      message: "Server error",
-      error: error.message,
+      message: "Registration failed",
     });
   }
 };
@@ -375,6 +466,7 @@ const logoutUser = async (req, res) => {
 
 module.exports = {
   registerUser,
+  verifyRegisterOtp,
   loginUser,
   getMyProfile,
   getAllUsers,

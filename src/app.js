@@ -46,7 +46,6 @@ app.use(cookieParser());
 const allowedOrigins = [
   process.env.CLIENT_LOCAL_URL,
   process.env.CLIENT_URL,
-
 ];
 
 app.use(
