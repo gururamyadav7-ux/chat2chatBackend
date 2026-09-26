@@ -1,23 +1,26 @@
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-    service: "gmail",
+  host: process.env.HOST_EMAIL,
+  port: process.env.EMAIL_PORT,
+  secure: true,
 
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
 });
 
 const sendOtpEmail = async (email, otp) => {
-    const mailOptions = {
-        from: process.env.EMAIL_USER,
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
 
-        to: email,
 
-        subject: "Your Registration OTP",
+    to: email,
 
-        html: `
+    subject: "Your Registration OTP",
+
+    html: `
       <div style="
         font-family: Arial;
         max-width: 500px;
@@ -50,9 +53,9 @@ const sendOtpEmail = async (email, otp) => {
 
       </div>
     `,
-    };
+  };
 
-    await transporter.sendMail(mailOptions);
+  await transporter.sendMail(mailOptions);
 };
 
 module.exports = sendOtpEmail;
