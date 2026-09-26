@@ -104,7 +104,7 @@ const registerUser = async (req, res) => {
               border-radius: 15px;
             ">
     
-              <h2>WhatsApp Clone</h2>
+              <h2>Wordwav</h2>
     
               <p>Hello ${name},</p>
     
