@@ -4,10 +4,13 @@ const { generateAccessToken, generateRefreshToken } = require("../utils/TokenCre
 
 const Otp = require("../model/OTP.model");
 
-const sendOtpEmail = require("../utils/SendOTP");
+// const sendOtpEmail = require("../utils/SendOTP");
 
+const { BrevoClient } = require("@getbrevo/brevo");
 
-
+const brevo = new BrevoClient({
+  apiKey: process.env.BREVO_API_KEY,
+});
 // ===============================
 // Register User
 // ===============================
@@ -67,8 +70,67 @@ const registerUser = async (req, res) => {
       password: hashedPassword,
       expiresAt,
     });
+    //********** */
+    // gmail mathod
+    // await sendOtpEmail(email, otp);
+    //*********** */
 
-    await sendOtpEmail(email, otp);
+    //******** */
+    // Brevo mathod
+    //******* */
+    // Brevo email
+    await brevo.transactionalEmails.sendTransacEmail({
+      sender: {
+        email: process.env.BREVO_EMAIL,
+        name: process.env.BREVO_NAME,
+      },
+
+      to: [
+        {
+          email,
+          name,
+        },
+      ],
+
+      subject: "Your WhatsApp Verification OTP",
+
+      htmlContent: `
+            <div style="
+              font-family: Arial;
+              max-width: 500px;
+              margin: auto;
+              padding: 30px;
+              border: 1px solid #ddd;
+              border-radius: 15px;
+            ">
+    
+              <h2>WhatsApp Clone</h2>
+    
+              <p>Hello ${name},</p>
+    
+              <p>
+                Your verification OTP is:
+              </p>
+    
+              <h1 style="
+                letter-spacing: 8px;
+                text-align: center;
+              ">
+                ${otp}
+              </h1>
+    
+              <p>
+                This OTP will expire in 5 minutes.
+              </p>
+    
+              <p>
+                If you did not create this account,
+                please ignore this email.
+              </p>
+    
+            </div>
+          `,
+    });
 
     res.status(200).json({
       success: true,
