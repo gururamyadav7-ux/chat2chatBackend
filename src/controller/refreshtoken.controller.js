@@ -1,12 +1,10 @@
 const jwt = require("jsonwebtoken")
 const User = require("../model/User.model")
+const { generateAccessToken } = require("../utils/TokenCreate")
 
 const refreshAccessToken = async (req, res) => {
   try {
-
-    const refreshToken =
-      req.cookies.refreshToken;
-
+    const refreshToken = req.cookies.refreshToken;
 
     if (!refreshToken) {
       return res.status(401).json({
@@ -26,7 +24,6 @@ const refreshAccessToken = async (req, res) => {
     // Find user
     const user = await User.findById(decoded.id);
 
-
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -43,11 +40,8 @@ const refreshAccessToken = async (req, res) => {
       });
     }
 
-
     // Generate new access token
-    const newAccessToken =
-      generateAccessToken(user._id);
-
+    const newAccessToken = generateAccessToken(user._id);
 
     // Send new cookie
     res
@@ -63,13 +57,13 @@ const refreshAccessToken = async (req, res) => {
           maxAge: 15 * 60 * 1000,
         }
       )
-      .status(200)
-      .json({
+      .status(200).json({
         success: true,
         message:
           "New access token generated",
       });
 
+    console.log("create accses token");
   } catch (error) {
 
     return res.status(401).json({
