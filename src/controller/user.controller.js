@@ -147,8 +147,9 @@ const registerUser = async (req, res) => {
   }
 };
 
-// Verification
-
+// ===============================
+// Register User OTP
+// ===============================
 const verifyRegisterOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -187,8 +188,6 @@ const verifyRegisterOtp = async (req, res) => {
       });
     }
 
-
-
     // Create user
     const user = await User.create({
       name: otpData.name,
@@ -198,11 +197,11 @@ const verifyRegisterOtp = async (req, res) => {
       isVerified: true,
     });
 
-    // Update status
-    user.isOnline = true;
-    user.lastSeen = null;
+    // // Update status
+    // user.isOnline = true;
+    // user.lastSeen = null;
 
-    await user.save();
+    // await user.save();
 
 
     // Delete OTP
@@ -279,12 +278,13 @@ const verifyRegisterOtp = async (req, res) => {
 // ===============================
 const loginUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { email, phone, password } = req.body;
 
-    if (!email || !name || !password) {
+    // Validation
+    if (!email || !phone || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required",
+        message: "All fields are required",
       });
     }
 
@@ -317,12 +317,10 @@ const loginUser = async (req, res) => {
     await Otp.create({
       email,
       otp,
-      name,
       phone,
       password: hashedPassword,
       expiresAt,
     });
-    //
     //******** */
     // Brevo mathod
     //******* */
@@ -336,7 +334,7 @@ const loginUser = async (req, res) => {
       to: [
         {
           email,
-          name,
+          email,
         },
       ],
 
@@ -354,7 +352,7 @@ const loginUser = async (req, res) => {
     
               <h2>Wordwav</h2>
     
-              <p>Hello ${name},</p>
+              <p>Hello ${email},</p>
     
               <p>
                 Your verification OTP is:
@@ -396,6 +394,133 @@ const loginUser = async (req, res) => {
   }
 };
 
+// ===============================
+// Login User Verify OTP
+// ===============================
+
+const verifyLoginOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "email and OTP are required",
+      });
+    }
+
+    const otpData = await Otp.findOne({ email });
+
+
+
+    if (!otpData) {
+      return res.status(400).json({
+        success: false,
+        message: "email and OTP expired or not found",
+      });
+    }
+
+    if (otpData.otp !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    if (otpData.expiresAt < new Date()) {
+      await Otp.deleteOne({ _id: otpData._id });
+
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired",
+      });
+    }
+
+    // Find user
+    const user = await User.findOne({ email }).select("+password");
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+
+    // Update status
+    user.isOnline = true;
+    user.lastSeen = null;
+
+    await user.save();
+
+
+    // Delete OTP
+    await Otp.deleteOne({
+      _id: otpData._id,
+    });
+
+    // Generate Access Token
+    const accessToken = generateAccessToken(user._id);
+
+    // Generate Refresh Token
+    const refreshToken = generateRefreshToken(user._id);
+
+    // Save refresh token in database
+    user.refreshToken = refreshToken;
+
+    await user.save();
+
+
+    // Cookie options
+    const accessTokenOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 15 * 60 * 1000,
+    };
+
+    const refreshTokenOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    };
+
+    // Send cookies
+    res
+      .cookie(
+        "accessToken",
+        accessToken,
+        accessTokenOptions
+      )
+      .cookie(
+        "refreshToken",
+        refreshToken,
+        refreshTokenOptions
+      )
+      .status(201)
+      .json({
+        success: true,
+        message: "User registered successfully",
+
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          profilePic: user.profilePic,
+        },
+        accessToken: accessToken
+      });
+
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Registration failed",
+    });
+  }
+};
 // ===============================
 // Get My Profile
 // ===============================
@@ -564,6 +689,7 @@ module.exports = {
   registerUser,
   verifyRegisterOtp,
   loginUser,
+  verifyLoginOtp,
   getMyProfile,
   getAllUsers,
   searchUsers,

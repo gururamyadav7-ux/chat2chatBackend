@@ -4,6 +4,7 @@ const {
   registerUser,
   verifyRegisterOtp,
   loginUser,
+  verifyLoginOtp,
   getMyProfile,
   getAllUsers,
   searchUsers,
@@ -15,8 +16,12 @@ const router = express.Router();
 
 //register user
 router.post("/register", registerUser);
+// register verify OTP
+router.post("/verify-register-otp", verifyRegisterOtp);
 // login user
 router.post("/login", loginUser);
+// Ligin verify OTP
+router.post("/verify-login-otp", verifyLoginOtp);
 // my profile
 router.get("/profile", authMiddleware, getMyProfile);
 // all users
@@ -27,10 +32,5 @@ router.get("/searchusers", authMiddleware, searchUsers);
 router.put("/updateprofile", authMiddleware, updateProfile);
 // logout user
 router.get("/logoutuser", authMiddleware, logoutUser);
-
-// OTP verify 
-
-router.post("/verify-register-otp", verifyRegisterOtp);
-
 
 module.exports = router;
