@@ -188,6 +188,7 @@ const verifyRegisterOtp = async (req, res) => {
     }
 
 
+
     // Create user
     const user = await User.create({
       name: otpData.name,
@@ -196,6 +197,12 @@ const verifyRegisterOtp = async (req, res) => {
       password: otpData.password,
       isVerified: true,
     });
+
+    // Update status
+    user.isOnline = true;
+    user.lastSeen = null;
+
+    await user.save();
 
 
     // Delete OTP
@@ -290,66 +297,93 @@ const loginUser = async (req, res) => {
         message: "Invalid email or password",
       });
     }
+    //
+    // Generate 6 digit OTP
+    const otp = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
 
-    // Update status
-    user.status = "online";
-    user.lastSeen = null;
+    // Password hash
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    await user.save();
+    // Delete previous OTP
+    await Otp.deleteMany({ email });
 
-    // Generate Access Token
-    const accessToken = generateAccessToken(user._id);
+    // OTP expires after 5 minutes
+    const expiresAt = new Date(
+      Date.now() + 5 * 60 * 1000
+    );
 
-    // Generate Refresh Token
-    const refreshToken = generateRefreshToken(user._id);
+    await Otp.create({
+      email,
+      otp,
+      name,
+      phone,
+      password: hashedPassword,
+      expiresAt,
+    });
+    //
+    //******** */
+    // Brevo mathod
+    //******* */
+    // Brevo email
+    await brevo.transactionalEmails.sendTransacEmail({
+      sender: {
+        email: process.env.BREVO_EMAIL,
+        name: process.env.BREVO_NAME,
+      },
 
-    // Save refresh token in database
-    user.refreshToken = refreshToken;
-
-    await user.save();
-
-
-    // Cookie options
-    const accessTokenOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 15 * 60 * 1000,
-    };
-
-    const refreshTokenOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    };
-
-    // Send cookies
-    res
-      .cookie(
-        "accessToken",
-        accessToken,
-        accessTokenOptions
-      )
-      .cookie(
-        "refreshToken",
-        refreshToken,
-        refreshTokenOptions
-      )
-      .status(201)
-      .json({
-        success: true,
-        message: "User registered successfully",
-
-        user: {
-          _id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          profilePic: user.profilePic,
+      to: [
+        {
+          email,
+          name,
         },
-        accessToken: accessToken
-      });
+      ],
+
+      subject: "Your WhatsApp Verification OTP",
+
+      htmlContent: `
+            <div style="
+              font-family: Arial;
+              max-width: 500px;
+              margin: auto;
+              padding: 30px;
+              border: 1px solid #ddd;
+              border-radius: 15px;
+            ">
+    
+              <h2>Wordwav</h2>
+    
+              <p>Hello ${name},</p>
+    
+              <p>
+                Your verification OTP is:
+              </p>
+    
+              <h1 style="
+                letter-spacing: 8px;
+                text-align: center;
+              ">
+                ${otp}
+              </h1>
+    
+              <p>
+                This OTP will expire in 5 minutes.
+              </p>
+    
+              <p>
+                If you did not create this account,
+                please ignore this email.
+              </p>
+    
+            </div>
+          `,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "OTP sent successfully",
+    });
 
   } catch (error) {
     console.error(error);
